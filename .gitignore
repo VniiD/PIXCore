@@ -1,0 +1,6 @@
+deploy/.dev/
+*.key
+*.pem
+.env
+/bin/
+/ledgerctl

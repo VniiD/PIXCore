@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package pixcore.ledger.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/pixcore/pixcore/api/gen/pixcore/ledger/v1;ledgerv1";
+
+// Ledger é genérico: não conhece conceitos de Pix. Todo acesso exige mTLS e
+// autorização por método (ver ADR-0009 e a configuração de ACL do serviço).
+service Ledger {
+  // Idempotente por external_ref.
+  rpc CreateAccount(CreateAccountRequest) returns (Account);
+  rpc GetAccount(GetAccountRequest) returns (Account);
+  rpc SetAccountStatus(SetAccountStatusRequest) returns (Account);
+
+  // Crédito externo síncrono. Idempotente por reference_id.
+  rpc Credit(CreditRequest) returns (CreditResponse);
+
+  rpc GetBalance(GetBalanceRequest) returns (Balance);
+  rpc ListEntries(ListEntriesRequest) returns (EntryPage);
+}
+
+enum AccountType {
+  ACCOUNT_TYPE_UNSPECIFIED = 0;
+  ACCOUNT_TYPE_CUSTOMER = 1;
+  ACCOUNT_TYPE_SETTLEMENT_TRANSIT = 2;
+  ACCOUNT_TYPE_RESERVE = 3;
+  ACCOUNT_TYPE_FEES = 4;
+  ACCOUNT_TYPE_INTERNAL = 5;
+}
+
+enum AccountStatus {
+  ACCOUNT_STATUS_UNSPECIFIED = 0;
+  ACCOUNT_STATUS_ACTIVE = 1;
+  ACCOUNT_STATUS_FROZEN = 2;
+  ACCOUNT_STATUS_CLOSED = 3;
+}
+
+enum Direction {
+  DIRECTION_UNSPECIFIED = 0;
+  DIRECTION_DEBIT = 1;
+  DIRECTION_CREDIT = 2;
+}
+
+message Account {
+  string id = 1;
+  string external_ref = 2; // opaco; sem PII
+  AccountType type = 3;
+  string currency = 4;
+  AccountStatus status = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+message CreateAccountRequest {
+  string external_ref = 1;
+  AccountType type = 2; // somente CUSTOMER é aceito pela API; contas de sistema são provisionadas na subida
+  string currency = 3;
+}
+
+message GetAccountRequest {
+  oneof by {
+    string id = 1;
+    string external_ref = 2;
+  }
+}
+
+message SetAccountStatusRequest {
+  string id = 1;
+  AccountStatus status = 2;
+}
+
+message CreditRequest {
+  string reference_id = 1; // ex.: end_to_end_id
+  string account_id = 2;
+  int64 amount = 3; // unidade menor (centavos), > 0
+  string currency = 4;
+  map<string, string> metadata = 5; // opaco, limitado
+}
+
+message CreditResponse {
+  string journal_id = 1;
+  bool replayed = 2; // true quando devolve resultado gravado
+}
+
+message GetBalanceRequest {
+  string account_id = 1;
+}
+
+message Balance {
+  string account_id = 1;
+  string currency = 2;
+  int64 available = 3;
+  int64 held = 4;
+  int64 ledger = 5; // available + held
+}
+
+message Entry {
+  string id = 1;
+  string journal_id = 2;
+  string journal_kind = 3;
+  string reference_id = 4;
+  Direction direction = 5;
+  int64 amount = 6;
+  string currency = 7;
+  int64 balance_after = 8;
+  int64 seq = 9;
+  google.protobuf.Timestamp created_at = 10;
+}
+
+message ListEntriesRequest {
+  string account_id = 1;
+  int32 page_size = 2; // padrão 50, máximo 200
+  int64 after_seq = 3; // cursor: devolve seq > after_seq
+}
+
+message EntryPage {
+  repeated Entry entries = 1;
+  int64 next_after_seq = 2; // 0 quando não há mais páginas
+}

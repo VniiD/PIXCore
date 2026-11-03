@@ -1,0 +1,108 @@
+# Ambiente de desenvolvimento do PixCore (ledger-service). NÃO use em produção.
+# Pré-requisito: scripts/gen-dev-certs.sh (ou `make dev-secrets`).
+name: pixcore
+
+x-ledger-env: &ledger-env
+  LEDGER_ENV: development
+  LEDGER_CURRENCIES: BRL
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ledger_owner
+      POSTGRES_DB: ledger
+      POSTGRES_PASSWORD_FILE: /run/secrets/owner_password
+    secrets: [owner_password, app_password]
+    volumes:
+      - ./ledger/postgres-init.sh:/docker-entrypoint-initdb.d/10-roles.sh:ro
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ledger_owner -d ledger"]
+      interval: 3s
+      retries: 20
+    networks: [backend]
+
+  kafka:
+    image: apache/kafka:3.9.0
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 5s
+      retries: 30
+    networks: [backend]
+
+  kafka-init:
+    image: apache/kafka:3.9.0
+    depends_on:
+      kafka: { condition: service_healthy }
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        for t in pixcore.ledger.commands.v1 pixcore.ledger.events.v1 pixcore.ledger.commands.v1.dlq; do
+          /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic $$t --partitions 3 --replication-factor 1
+        done
+    networks: [backend]
+
+  ledger-migrate:
+    build: { context: .., dockerfile: deploy/ledger/Dockerfile }
+    image: pixcore/ledger-service:dev
+    command: ["migrate"]
+    environment:
+      <<: *ledger-env
+      LEDGER_MIGRATE_DATABASE_URL_FILE: /run/secrets/migrate_database_url
+    secrets: [migrate_database_url]
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [backend]
+
+  ledger-service:
+    image: pixcore/ledger-service:dev
+    environment:
+      <<: *ledger-env
+      LEDGER_DATABASE_URL_FILE: /run/secrets/database_url
+      LEDGER_OPS_ADDR: 127.0.0.1:9090
+      LEDGER_TLS_CERT_FILE: /certs/ledger-service.crt
+      LEDGER_TLS_KEY_FILE: /certs/ledger-service.key
+      LEDGER_TLS_CLIENT_CA_FILE: /certs/ca.crt
+      LEDGER_ACL_FILE: /config/acl.json
+      LEDGER_KAFKA_BROKERS: kafka:9092
+      LEDGER_HMAC_KEYS_FILE: /run/secrets/hmac_keys
+    secrets: [database_url, hmac_keys]
+    volumes:
+      - ./.dev/certs:/certs:ro
+      - ./ledger/acl.dev.json:/config/acl.json:ro
+    ports:
+      - "127.0.0.1:9443:9443"
+    depends_on:
+      ledger-migrate: { condition: service_completed_successfully }
+      kafka-init: { condition: service_completed_successfully }
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+    networks: [backend]
+
+secrets:
+  owner_password: { file: ./.dev/secrets/owner_password }
+  app_password: { file: ./.dev/secrets/app_password }
+  database_url: { file: ./.dev/secrets/database_url }
+  migrate_database_url: { file: ./.dev/secrets/migrate_database_url }
+  hmac_keys: { file: ./.dev/secrets/hmac_keys.json }
+
+networks:
+  backend: {}
+
+volumes:
+  pgdata: {}
