@@ -52,8 +52,8 @@ down:
 
 # Demonstração: cria conta, credita e consulta saldo via gRPC com mTLS (requer `make up`).
 demo: build
-	@export LEDGER_ADDR=127.0.0.1:9443 LEDGER_SERVER_NAME=localhost LEDGER_CA_FILE=deploy/.dev/certs/ca.crt \
-		LEDGER_CERT_FILE=deploy/.dev/certs/admin.crt LEDGER_KEY_FILE=deploy/.dev/certs/admin.key; \
+	@export LEDGER_ADDR=127.0.0.1:9443 LEDGER_SERVER_NAME=localhost LEDGER_CA_FILE=$(CURDIR)/deploy/.dev/certs/ca.crt \
+		LEDGER_CERT_FILE=$(CURDIR)/deploy/.dev/certs/admin.crt LEDGER_KEY_FILE=$(CURDIR)/deploy/.dev/certs/admin.key; \
 	id=$$(./bin/ledgerctl create-account demo-$$(date +%s) BRL | sed -n 's/.*"id": "\(.*\)".*/\1/p'); \
 	./bin/ledgerctl credit demo-credit-$$id $$id 12345 BRL >/dev/null && ./bin/ledgerctl balance $$id
 
