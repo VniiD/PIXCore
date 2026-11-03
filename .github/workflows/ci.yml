@@ -34,7 +34,7 @@ jobs:
       - name: gosec
         run: go run github.com/securego/gosec/v2/cmd/gosec@latest -quiet -exclude-generated ./...
       - name: gitleaks (histórico completo)
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
       - name: build da imagem
         run: docker build -f deploy/ledger/Dockerfile -t pixcore/ledger-service:ci .
