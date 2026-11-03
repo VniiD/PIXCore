@@ -5,7 +5,11 @@
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'ledger_app') THEN
-        CREATE ROLE ledger_app NOLOGIN;
+        BEGIN
+            CREATE ROLE ledger_app NOLOGIN;
+        EXCEPTION WHEN duplicate_object OR unique_violation THEN
+            NULL; -- criado concorrentemente (papel é global ao cluster)
+        END;
     END IF;
 END $$;
 
