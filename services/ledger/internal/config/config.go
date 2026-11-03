@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/pixcore/pixcore/libs/platform/secureio"
 	"net/url"
 	"os"
 	"strconv"
@@ -48,7 +49,7 @@ type Config struct {
 // secret lê VAR ou, preferencialmente, o conteúdo do arquivo apontado por VAR_FILE.
 func secret(name string) (string, error) {
 	if f := os.Getenv(name + "_FILE"); f != "" {
-		b, err := os.ReadFile(f) // #nosec G304 G703 -- caminho vem da configuração do operador, não de entrada externa
+		b, err := secureio.ReadFile(f)
 		if err != nil {
 			return "", fmt.Errorf("%s_FILE: %w", name, err)
 		}
@@ -118,7 +119,7 @@ func Load() (Config, error) {
 	c.RequireSignature = get("LEDGER_REQUIRE_SIGNATURE", "true") == "true"
 
 	if f := os.Getenv("LEDGER_HMAC_KEYS_FILE"); f != "" {
-		b, err := os.ReadFile(f) // #nosec G304 G703 -- caminho vem da configuração do operador, não de entrada externa
+		b, err := secureio.ReadFile(f)
 		if err != nil {
 			return c, fmt.Errorf("LEDGER_HMAC_KEYS_FILE: %w", err)
 		}

@@ -8,8 +8,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/pixcore/pixcore/libs/platform/secureio"
 	"log/slog"
-	"os"
 	"runtime/debug"
 	"sync"
 	"time"
@@ -35,7 +35,7 @@ import (
 type ACL map[string][]string
 
 func LoadACL(path string) (ACL, error) {
-	b, err := os.ReadFile(path) // #nosec G304 G703 -- caminho vem da configuração do operador, não de entrada externa
+	b, err := secureio.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}

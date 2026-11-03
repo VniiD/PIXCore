@@ -6,11 +6,11 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"os"
+	"github.com/pixcore/pixcore/libs/platform/secureio"
 )
 
 func loadPool(caFile string) (*x509.CertPool, error) {
-	pem, err := os.ReadFile(caFile) // #nosec G304 G703 -- caminho vem da configuração do operador, não de entrada externa
+	pem, err := secureio.ReadFile(caFile)
 	if err != nil {
 		return nil, err
 	}
