@@ -16,7 +16,7 @@ jobs:
           --health-cmd "pg_isready -U ledger_owner" --health-interval 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with: { go-version-file: go.mod }
       - run: go vet ./... && test -z "$(gofmt -l .)"
       - run: go test -race -count=1 ./...
@@ -27,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with: { go-version-file: go.mod }
       - name: govulncheck
         run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
