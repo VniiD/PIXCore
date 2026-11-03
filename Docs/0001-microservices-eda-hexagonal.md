@@ -1,8 +1,5 @@
 # ADR-0001: Microsserviços com EDA e hexagonal por serviço
 
-- **Status:** Proposto (substitui a proposta anterior de monólito modular)
-- **Data:** 2026-11-02
-
 ## Contexto
 O PixCore é uma infraestrutura *bank-in-a-box* para ser adotada em outros projetos, sendo o banco digital (repositório separado) o primeiro consumidor. Os requisitos incluem isolar o ledger (maior criticidade), isolar a fronteira regulatória (certificados, rede do regulador) e usar EDA, padrão em fintechs e bancos digitais.
 

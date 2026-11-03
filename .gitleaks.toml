@@ -1,0 +1,8 @@
+title = "PixCore gitleaks"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Arquivos sem segredos reais (placeholders/documentação)"
+paths = ['''Docs/.*''', '''go\.sum''']

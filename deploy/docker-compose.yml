@@ -89,8 +89,12 @@ services:
       ledger-migrate: { condition: service_completed_successfully }
       kafka-init: { condition: service_completed_successfully }
     read_only: true
+    tmpfs: ["/tmp:size=16m,noexec,nosuid,nodev"]
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
+    pids_limit: 256
+    mem_limit: 512m
+    cpus: 1.0
     restart: unless-stopped
     networks: [backend]
 

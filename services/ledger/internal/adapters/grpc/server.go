@@ -35,7 +35,7 @@ import (
 type ACL map[string][]string
 
 func LoadACL(path string) (ACL, error) {
-	b, err := os.ReadFile(path)
+	b, err := os.ReadFile(path) // #nosec G304 G703 -- caminho vem da configuração do operador, não de entrada externa
 	if err != nil {
 		return nil, err
 	}

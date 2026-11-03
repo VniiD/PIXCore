@@ -1,7 +1,9 @@
-.PHONY: build test test-integration proto vet dev-secrets up down demo infra-test-up infra-test-down
+.PHONY: security build test test-integration proto vet dev-secrets up down demo infra-test-up infra-test-down
 
 GO ?= go
-PG_DSN ?= postgres://ledger_owner:owner@127.0.0.1:55432/ledger?sslmode=disable
+# Senha efêmera por execução (banco descartável em 127.0.0.1); nada de credencial fixa no repositório.
+TEST_PG_PW := $(shell openssl rand -hex 16)
+PG_DSN ?= postgres://ledger_owner:$(TEST_PG_PW)@127.0.0.1:55432/ledger?sslmode=disable
 KAFKA_BROKERS ?= 127.0.0.1:59092
 
 build:
@@ -21,7 +23,7 @@ test-integration: infra-test-up
 
 infra-test-up:
 	@docker rm -f pixcore-test-pg pixcore-test-kafka >/dev/null 2>&1 || true
-	docker run -d --name pixcore-test-pg -e POSTGRES_PASSWORD=owner -e POSTGRES_USER=ledger_owner -e POSTGRES_DB=ledger \
+	docker run -d --name pixcore-test-pg -e POSTGRES_PASSWORD=$(TEST_PG_PW) -e POSTGRES_USER=ledger_owner -e POSTGRES_DB=ledger \
 		-p 127.0.0.1:55432:5432 --tmpfs /var/lib/postgresql/data postgres:17-alpine -c fsync=off >/dev/null
 	docker run -d --name pixcore-test-kafka -p 127.0.0.1:59092:9092 \
 		-e KAFKA_NODE_ID=1 -e KAFKA_PROCESS_ROLES=broker,controller \
@@ -54,3 +56,9 @@ demo: build
 		LEDGER_CERT_FILE=deploy/.dev/certs/admin.crt LEDGER_KEY_FILE=deploy/.dev/certs/admin.key; \
 	id=$$(./bin/ledgerctl create-account demo-$$(date +%s) BRL | sed -n 's/.*"id": "\(.*\)".*/\1/p'); \
 	./bin/ledgerctl credit demo-credit-$$id $$id 12345 BRL >/dev/null && ./bin/ledgerctl balance $$id
+
+# Varredura de segurança local (mesmas verificações do CI).
+security:
+	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+	go run github.com/securego/gosec/v2/cmd/gosec@latest -quiet -exclude-generated ./...
+	docker run --rm -v "$(CURDIR):/repo" zricethezav/gitleaks:latest detect --source /repo --config /repo/.gitleaks.toml --redact

@@ -326,6 +326,12 @@ flowchart LR
 - Mensagens Kafka assinadas com HMAC (chaves rotacionáveis); falha de assinatura vai para a DLQ.
 - Configuração de produção falha fechada (sem TLS/ACL/HMAC o serviço não sobe).
 
+### Conformidade e varreduras
+
+- Mapeamento ISO/IEC 27001:2022: [Docs/iso27001-controls.md](Docs/iso27001-controls.md); política: [SECURITY.md](SECURITY.md);
+  runbook: [Docs/runbooks/incident-and-key-rotation.md](Docs/runbooks/incident-and-key-rotation.md).
+- `make security` roda govulncheck, gosec e gitleaks; o CI (`.github/workflows/ci.yml`) também roda trivy na imagem.
+
 ## Limitações conhecidas
 
 - O plano de contas é simplificado e **precisa de revisão contábil** antes de uso real.
